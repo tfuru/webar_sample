@@ -162,8 +162,7 @@ export default defineComponent({
       const geometry = new THREE.BoxGeometry(1, 1, 1);
       const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
       const cube = new THREE.Mesh(geometry, material);
-      cube.position.y = 3.0;
-      cube.position.x = -3.0;
+      cube.position.y = 1.0;
 
       return cube;
     }
