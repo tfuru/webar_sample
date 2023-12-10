@@ -68,8 +68,7 @@ export default defineComponent({
     const initARContext = () => {
       console.log('initARContext');
       arToolkitContext = new THREEx.ArToolkitContext({
-        // cameraParametersUrl: THREEx.ArToolkitContext.baseURL + './data/camera_para.dat',
-        cameraParametersUrl: THREEx.ArToolkitContext.baseURL + "../data/data/camera_para.dat",
+        cameraParametersUrl: "./camera_para.dat",
         detectionMode: 'mono',
         debug: true,
       });
@@ -82,20 +81,19 @@ export default defineComponent({
           arToolkitContext.arController.options.orientation = getSourceOrientation(arToolkitSource);
 
           console.log('arToolkitContext', arToolkitContext);
-          window.arToolkitContext = arToolkitContext;
       });
 
       // MARKER
       arMarkerControls = new THREEx.ArMarkerControls(arToolkitContext, camera, {
           type: 'pattern',
-          // patternUrl: THREEx.ArToolkitContext.baseURL + './data/patt.hiro',
-          patternUrl: THREEx.ArToolkitContext.baseURL + '../data/data/patt.hiro',
-          // patternUrl : THREEx.ArToolkitContext.baseURL + '../data/data/patt.kanji',
-          // as we controls the camera, set changeMatrixMode: 'cameraTransformMatrix'
+          patternUrl: './patt.hiro',
           changeMatrixMode: 'cameraTransformMatrix',
       });
 
-      scene.visible = false;
+      arMarkerControls.addEventListener("markerFound", () => {
+        // マーカーが見つかっている時は毎秒呼ばれる
+        console.log("marker found");
+      });
     }
 
     const onResize = (renderer: THREE.WebGLRenderer, arToolkitSource: any, arToolkitContext: any ) => {
@@ -122,20 +120,7 @@ export default defineComponent({
       const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
       scene.add( directionalLight );
 
-      // カメラを追加 (視野角, アスペクト比, near, far)
-      // const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      // camera.position.set(0, 1, -5);
-      // camera.rotation.set(0, Math.PI, 0);
-
       // AR.js 初期化
-      /*
-      const arToolkitSource = new THREEx.ArToolkitSource({
-          // to read from the webcam
-          sourceType: 'webcam',
-          sourceWidth: window.innerWidth > window.innerHeight ? 640 : 480,
-          sourceHeight: window.innerWidth > window.innerHeight ? 480 : 640,
-      });
-      */
       arToolkitSource.init(
         () => {
           console.log('onReady');
@@ -158,15 +143,6 @@ export default defineComponent({
         }
       );
       
-      // ギズモを表示
-      const axesBarLength = 5.0;
-      const axesHelper = new THREE.AxesHelper(axesBarLength);
-      scene.add(axesHelper);
-
-      const controls = new OrbitControls(camera, canvasRef.value);
-      controls.target.y = 1.0;
-      controls.update();
-
       createBox(scene);
 
       renderer.setSize(window.innerWidth, window.innerHeight);
@@ -180,13 +156,16 @@ export default defineComponent({
     }
     
     const createBox = (scene: THREE.Scene) => {
+      // ギズモを表示
+      const axesBarLength = 5.0;
+      const axesHelper = new THREE.AxesHelper(axesBarLength);
+      scene.add(axesHelper);
+
       const geometry = new THREE.BoxGeometry(1, 1, 1);
       const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
       const cube = new THREE.Mesh(geometry, material);
       scene.add(cube);
     }
-
-
 
     onMounted(() => {
       console.log('mounted!')
