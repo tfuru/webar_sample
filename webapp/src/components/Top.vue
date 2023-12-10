@@ -25,6 +25,7 @@ export default defineComponent({
   name: 'TopComponent',
   setup() {
     console.log("THREEx", THREEx);
+    console.log(" ArToolkitContext.baseURL", THREEx.ArToolkitContext.baseURL);
     console.log("ARjs", ARjs);
 
     const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -67,8 +68,10 @@ export default defineComponent({
     const initARContext = () => {
       console.log('initARContext');
       arToolkitContext = new THREEx.ArToolkitContext({
-        cameraParametersUrl: THREEx.ArToolkitContext.baseURL + './data/camera_para.dat',
+        // cameraParametersUrl: THREEx.ArToolkitContext.baseURL + './data/camera_para.dat',
+        cameraParametersUrl: THREEx.ArToolkitContext.baseURL + "../data/data/camera_para.dat",
         detectionMode: 'mono',
+        debug: true,
       });
 
       // initialize it
@@ -85,7 +88,8 @@ export default defineComponent({
       // MARKER
       arMarkerControls = new THREEx.ArMarkerControls(arToolkitContext, camera, {
           type: 'pattern',
-          patternUrl: THREEx.ArToolkitContext.baseURL + './data/patt.hiro',
+          // patternUrl: THREEx.ArToolkitContext.baseURL + './data/patt.hiro',
+          patternUrl: THREEx.ArToolkitContext.baseURL + '../data/data/patt.hiro',
           // patternUrl : THREEx.ArToolkitContext.baseURL + '../data/data/patt.kanji',
           // as we controls the camera, set changeMatrixMode: 'cameraTransformMatrix'
           changeMatrixMode: 'cameraTransformMatrix',
