@@ -1,5 +1,13 @@
 <template>
-  <div class="top">
+  <div class="top">    
+    <div>
+      <ol>
+        <li v-for="camera in cameraList" :key="camera.deviceId">
+          <p>{{ camera.label }}</p>
+          <p>{{ camera.deviceId }}</p>
+        </li>
+      </ol>
+    </div>
     <div ref="canvasRef"></div>
   </div>
 </template>
@@ -18,8 +26,16 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 // AR.jsとthree.jsでMarker Based AR
 // https://qiita.com/aa_debdeb/items/4edf6a2e053e02305ef5
 //
+// hiroマーカー
+// https://www.techpit.jp/courses/55/curriculums/58/sections/470/parts/1613
+
 // AR.js Docs
 // https://ar-js-org.github.io/AR.js-Docs/
+//
+
+// Back Camera on mobile
+// https://github.com/jeromeetienne/AR.js/issues/86
+// 
 
 export default defineComponent({
   name: 'TopComponent',
@@ -81,7 +97,7 @@ export default defineComponent({
 				cameraParametersUrl: './camera_para.dat',
 				detectionMode: 'mono'
 			});
-
+      
 			// initialize it
 			arToolkitContext.init(() => { // copy projection matrix to camera
 				camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
@@ -95,6 +111,9 @@ export default defineComponent({
 				patternUrl: './patt.hiro',
 				changeMatrixMode: 'cameraTransformMatrix'
 			});
+
+      loadCameraList();
+
 			scene.visible = false
 		}
 
@@ -105,7 +124,7 @@ export default defineComponent({
         sourceHeight: window.innerWidth > window.innerHeight ? 480 : 640,
     });
 
-    arToolkitSource.init(() => {
+    arToolkitSource.init(() => {     
         initARContext();
         setTimeout(onResize, 2000);
       },
@@ -128,9 +147,13 @@ export default defineComponent({
       scene.add( directionalLight );
       
       // キューブを表示
-      const clock = new THREE.Clock();
-      const cube = createBox(scene);
-      scene.add(cube);
+      // const clock = new THREE.Clock();
+      // const cube = createBox(scene, true);
+      // scene.add(cube);
+
+      // パネルを表示
+      const plane = createPlane(scene, true); 
+      scene.add(plane);
 
       canvasRef.value.appendChild(renderer.domElement);
 
@@ -144,36 +167,89 @@ export default defineComponent({
         }
 
         // キューブを回転させる
-        const delta = clock.getDelta();
-        cube.rotation.x += delta * 1.0;
-        cube.rotation.y += delta * 1.5; 
+        // const delta = clock.getDelta();
+        // cube.rotation.x += delta * 1.0;
+        // cube.rotation.y += delta * 1.5; 
 
         renderer.render(scene, camera);
       }
       render();
     }
     
-    const createBox = (scene: THREE.Scene) => {
-      // ギズモを表示
-      const axesBarLength = 5.0;
-      const axesHelper = new THREE.AxesHelper(axesBarLength);
-      scene.add(axesHelper);
+    const createBox = (scene: THREE.Scene, isAxesHelper: boolean) => {
 
       const geometry = new THREE.BoxGeometry(1, 1, 1);
       const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
       const cube = new THREE.Mesh(geometry, material);
       cube.position.y = 1.0;
-
+      
+      // ギズモを表示
+      if (isAxesHelper) {
+        const axesBarLength = 5.0;
+        const axesHelper = new THREE.AxesHelper(axesBarLength);
+        cube.add(axesHelper);
+      }
       return cube;
     }
 
+    const createPlane = (scene: THREE.Scene, isAxesHelper: boolean) => {
+      const geometry = new THREE.PlaneGeometry( 1, 1 );
+      const material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+
+      const plane = new THREE.Mesh( geometry, material );
+      plane.rotation.x = -Math.PI / 2;
+
+      // ギズモを表示
+      if (isAxesHelper) {
+        const axesBarLength = 5.0;
+        const axesHelper = new THREE.AxesHelper(axesBarLength);
+        plane.add(axesHelper);
+      }
+
+      return plane;
+    }
+
+    // カメラ一覧を取得
+    var cameraList = ref<MediaDeviceInfo[]>([]);
+    const loadCameraList = () => {
+      console.log("loadCameraList");
+      navigator.mediaDevices.enumerateDevices()
+        .then((devices) => {
+          devices.forEach((device) => {
+            if (device.kind === "videoinput") {
+              console.log(device.kind + ": " + device.label + " id = " + device.deviceId);
+              cameraList.value.push(device);
+            }
+          });
+
+          // 仮で 2番目のカメラを選択
+          var constraints = {
+            video: {
+              deviceId: { exact: cameraList.value[1].deviceId }
+            }
+          };
+          navigator.mediaDevices
+            .getUserMedia(constraints)
+            .then((stream) => {
+              arToolkitSource.domElement.srcObject = stream;
+            })
+            .catch((err) => {
+              console.log(err.name + ": " + err.message);
+            });
+        })
+        .catch((err) => {
+          console.log(err.name + ": " + err.message);
+        });
+    }    
+
     onMounted(() => {
       console.log('mounted!')
-      init();
+      init();      
     });
     
     return {
-      canvasRef
+      canvasRef,
+      cameraList,
     }
   }
 });
@@ -182,4 +258,9 @@ export default defineComponent({
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
 
+ol {
+  li {
+    color: red;
+  }
+}
 </style>
