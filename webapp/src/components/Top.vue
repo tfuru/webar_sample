@@ -29,127 +29,125 @@ export default defineComponent({
     console.log("ARjs", ARjs);
 
     const canvasRef = ref<HTMLCanvasElement | null>(null);
+
+    // レンダラー
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+
     // シーン
     const scene = new THREE.Scene();
+    scene.visible = false;
 
     // カメラを追加 (視野角, アスペクト比, near, far)
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 1, -5);
-    camera.rotation.set(0, Math.PI, 0);
+    const camera = new THREE.Camera();
+    scene.add(camera);
 
-    var arToolkitContext: any = null;
-    var arMarkerControls: any = null;
+    // ARToolkit初期化
+    var arToolkitContext: any;
+    var arToolkitSource: any;
+    var arMarkerControls: any;
 
-    const arToolkitSource = new THREEx.ArToolkitSource({
-          // to read from the webcam
-          sourceType: 'webcam',
-          sourceWidth: window.innerWidth > window.innerHeight ? 640 : 480,
-          sourceHeight: window.innerWidth > window.innerHeight ? 480 : 640,
+    const getSourceOrientation = () => {
+			if (!arToolkitSource) {
+				return null;
+			}
+
+			console.log(
+				'actual source dimensions',
+				arToolkitSource.domElement.videoWidth,
+				arToolkitSource.domElement.videoHeight
+			);
+
+			if (arToolkitSource.domElement.videoWidth > arToolkitSource.domElement.videoHeight) {
+				console.log('source orientation', 'landscape');
+				return 'landscape';
+			} else {
+				console.log('source orientation', 'portrait');
+				return 'portrait';
+			}
+		}
+
+    const onResize = () => {
+			arToolkitSource.onResizeElement()
+			arToolkitSource.copyElementSizeTo(renderer.domElement)
+			if (arToolkitContext.arController !== null) {
+				arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas)
+			}
+		}
+
+    // ARToolkitContext初期化
+    const initARContext = () => {
+      // create atToolkitContext
+			arToolkitContext = new THREEx.ArToolkitContext({
+				cameraParametersUrl: './camera_para.dat',
+				detectionMode: 'mono'
+			});
+
+			// initialize it
+			arToolkitContext.init(() => { // copy projection matrix to camera
+				camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
+				arToolkitContext.arController.orientation = getSourceOrientation();
+				arToolkitContext.arController.options.orientation = getSourceOrientation();
+			});
+
+			// MARKER
+			arMarkerControls = new THREEx.ArMarkerControls(arToolkitContext, camera, {
+				type: 'pattern',
+				patternUrl: './patt.hiro',
+				changeMatrixMode: 'cameraTransformMatrix'
+			});
+			scene.visible = false
+		}
+
+    // ARToolkitContext初期化を実行
+    arToolkitSource = new THREEx.ArToolkitSource({
+        sourceType: 'webcam',
+        sourceWidth: window.innerWidth > window.innerHeight ? 640 : 480,
+        sourceHeight: window.innerWidth > window.innerHeight ? 480 : 640,
     });
 
-    const getSourceOrientation = (arToolkitSource: any) => {
-      if (!arToolkitSource) return '';
-
-      console.log(
-          'actual source dimensions',
-          arToolkitSource.domElement.videoWidth,
-          arToolkitSource.domElement.videoHeight
-      );
-
-      if (arToolkitSource.domElement.videoWidth > arToolkitSource.domElement.videoHeight) {
-          console.log('source orientation', 'landscape');
-          return 'landscape';
-      } else {
-          console.log('source orientation', 'portrait');
-          return 'portrait';
-      }
-    }
-
-    const initARContext = () => {
-      console.log('initARContext');
-      arToolkitContext = new THREEx.ArToolkitContext({
-        cameraParametersUrl: "./camera_para.dat",
-        detectionMode: 'mono',
-        debug: true,
+    arToolkitSource.init(() => {
+        initARContext();
+        setTimeout(onResize, 2000);
+      },
+      (error: any) => {
+        console.error(error);
       });
-
-      // initialize it
-      arToolkitContext.init(() => { // copy projection matrix to camera
-          camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
-
-          arToolkitContext.arController.orientatio = getSourceOrientation(arToolkitSource);
-          arToolkitContext.arController.options.orientation = getSourceOrientation(arToolkitSource);
-
-          console.log('arToolkitContext', arToolkitContext);
-      });
-
-      // MARKER
-      arMarkerControls = new THREEx.ArMarkerControls(arToolkitContext, camera, {
-          type: 'pattern',
-          patternUrl: './patt.hiro',
-          changeMatrixMode: 'cameraTransformMatrix',
-      });
-
-      arMarkerControls.addEventListener("markerFound", () => {
-        // マーカーが見つかっている時は毎秒呼ばれる
-        console.log("marker found");
-      });
-    }
-
-    const onResize = (renderer: THREE.WebGLRenderer, arToolkitSource: any, arToolkitContext: any ) => {
-      console.log('onResize');
-      arToolkitSource.onResizeElement();
-      arToolkitSource.copyElementSizeTo(renderer.domElement);
-      if (arToolkitContext.arController !== null) {
-        arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
-      }      
-    }
-
+    
+    // three.js 初期化
     const init = () => {
       console.log('init');
       if (canvasRef.value === null) {
         return;
       }
-      // three.js 初期化
-      const renderer = new THREE.WebGLRenderer({
-          antialias: true,
-          alpha: true
-      });
+      
+      renderer.setClearColor(new THREE.Color('lightgrey'), 0)
+      renderer.setSize(640, 480);
 
       // ライトを追加
       const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
       scene.add( directionalLight );
-
-      // AR.js 初期化
-      arToolkitSource.init(
-        () => {
-          console.log('onReady');
-          arToolkitSource.domElement.addEventListener('canplay', () => {
-                console.log(
-                    'canplay',
-                    'actual source dimensions',
-                    arToolkitSource.domElement.videoWidth,
-                arToolkitSource.domElement.videoHeight,
-          );
-          initARContext();
-          }) as unknown as HTMLVideoElement;          
-        
-          setTimeout(() => { 
-            onResize(renderer, arToolkitSource, arToolkitContext); 
-          }, 2000);
-        }, 
-        () => {
-          console.log('error');
-        }
-      );
       
-      createBox(scene);
+      // キューブを表示
+      const clock = new THREE.Clock();
+      const cube = createBox(scene);
+      scene.add(cube);
 
-      renderer.setSize(window.innerWidth, window.innerHeight);
       canvasRef.value.appendChild(renderer.domElement);
 
+      // 画面を更新
       const render = () => {
         requestAnimationFrame(render);
+        
+        if ((arToolkitSource) && (arToolkitSource.ready)) {
+          arToolkitContext.update(arToolkitSource.domElement);
+          scene.visible = camera.visible;
+        }
+
+        // キューブを回転させる
+        const delta = clock.getDelta();
+        cube.rotation.x += delta * 1.0;
+        cube.rotation.y += delta * 1.5; 
+
         renderer.render(scene, camera);
       }
       render();
@@ -164,14 +162,16 @@ export default defineComponent({
       const geometry = new THREE.BoxGeometry(1, 1, 1);
       const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
       const cube = new THREE.Mesh(geometry, material);
-      scene.add(cube);
+      cube.position.y = 3.0;
+      cube.position.x = -3.0;
+
+      return cube;
     }
 
     onMounted(() => {
       console.log('mounted!')
       init();
-
-    })
+    });
     
     return {
       canvasRef
