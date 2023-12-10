@@ -222,10 +222,10 @@ export default defineComponent({
             }
           });
 
-          // 仮で 2番目のカメラを選択
+          // 仮で カメラを選択
           var constraints = {
             video: {
-              deviceId: { exact: cameraList.value[1].deviceId }
+              deviceId: { exact: cameraList.value[0].deviceId }
             }
           };
           navigator.mediaDevices
